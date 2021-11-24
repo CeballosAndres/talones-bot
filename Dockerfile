@@ -14,11 +14,11 @@ ENV TELEGRAM_TOKEN ${TELEGRAM_TOKEN}
 RUN apt-get update
 RUN apt-get install -y python3 python3-pip python-dev build-essential python3-venv
 
-RUN mkdir -p /codebase /storage
-ADD . /codebase
-WORKDIR /codebase
+RUN mkdir -p /app /storage
+ADD . /app
+WORKDIR /app
 
 RUN pip3 install -r requirements.txt
-RUN chmod +x /codebase/bot.py
+RUN chmod +x /app/bot.py
 
-CMD python3 /codebase/bot.py;
+CMD python3 /app/bot.py

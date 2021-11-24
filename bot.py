@@ -1,26 +1,6 @@
-import re
-import os
 from payments import Payments
 from pathlib import Path
-
-directory = 'pdf_files'
-token = os.environ.get('TELEGRAM_TOKEN')
-
-"""
-First, a few callback functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-
-Usage:
-Example of a bot-user conversation using ConversationHandler.
-Send /start to initiate the conversation.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
-
-import logging
 from typing import Dict
-
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import (
     Updater,
@@ -31,6 +11,15 @@ from telegram.ext import (
     PicklePersistence,
     CallbackContext,
 )
+import logging
+import sys 
+import re
+import os
+
+
+TOKEN = os.getenv('TELEGRAM_TOKEN')
+MODE = os.getenv('MODE')
+directory = 'pdf_files'
 
 # Enable logging
 logging.basicConfig(
@@ -40,6 +29,25 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Select environment
+if MODE == "DEV":
+    def run(updater: Update):
+        # Start the Bot
+        updater.start_polling()
+        updater.idle()
+        logger.info("Starting in development mode") 
+elif MODE == "PROD":
+    def run(updater: Update):
+        PORT = int(os.environ.get('PORT', '8443'))
+        HEROKU_APP_NAME = os.environ.get('HEROKU_APP_NAME')
+        updater.start_webhook(listen='0.0.0.0', port=PORT, url_path=TOKEN)
+        updater.bot.set_webhook(f'https://{HEROKU_APP_NAME}.herokuapp.com/{TOKEN}')
+        logger.info("Starting in production mode") 
+else:
+    logger.info("Missing mode")
+    sys.exit()
+
+# For custome keyboards
 CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 
 reply_keyboard = [
@@ -146,60 +154,51 @@ def payment(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Próximamente...', reply_markup=markup)
 
 
-def main() -> None:
-    """Run the bot."""
-    # Create the Updater and pass it your bot's token.
-    persistence = PicklePersistence(filename='conversationbot')
-    updater = Updater(token, persistence=persistence)
+"""Run the bot."""
+# Create the Updater and pass it your bot's token.
+persistence = PicklePersistence(filename='conversationbot')
+updater = Updater(TOKEN, persistence=persistence)
 
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+# Get the dispatcher to register handlers
+dispatcher = updater.dispatcher
 
-    # Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            CHOOSING: [
-                MessageHandler(
-                    Filters.regex(re.compile('^(CURP|CURT)$', re.IGNORECASE)), regular_choice
-                )
-            ],
-            TYPING_CHOICE: [
-                MessageHandler(
-                    Filters.text & ~(Filters.command | Filters.regex('^Listo$')), regular_choice
-                )
-            ],
-            TYPING_REPLY: [
-                MessageHandler(
-                    Filters.text & ~(Filters.command | Filters.regex('^Listo$')),
-                    received_information,
-                )
-            ],
-        },
-        fallbacks=[MessageHandler(Filters.regex('^Listo$'), done)],
-        name="my_conversation",
-        persistent=True,
-    )
+# Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('start', start)],
+    states={
+        CHOOSING: [
+            MessageHandler(
+                Filters.regex(re.compile('^(CURP|CURT)$', re.IGNORECASE)), regular_choice
+            )
+        ],
+        TYPING_CHOICE: [
+            MessageHandler(
+                Filters.text & ~(Filters.command | Filters.regex('^Listo$')), regular_choice
+            )
+        ],
+        TYPING_REPLY: [
+            MessageHandler(
+                Filters.text & ~(Filters.command | Filters.regex('^Listo$')),
+                received_information,
+            )
+        ],
+    },
+    fallbacks=[MessageHandler(Filters.regex('^Listo$'), done)],
+    name="my_conversation",
+    persistent=True,
+)
 
-    dispatcher.add_handler(conv_handler)
+dispatcher.add_handler(conv_handler)
 
-    show_data_handler = CommandHandler('show_data', show_data)
-    dispatcher.add_handler(show_data_handler)
+show_data_handler = CommandHandler('show_data', show_data)
+dispatcher.add_handler(show_data_handler)
 
-    last_payment_handler = MessageHandler(Filters.regex(re.compile('^(última quincena|ultima quincena)$', re.IGNORECASE)), last_payment)
-    dispatcher.add_handler(last_payment_handler)
+last_payment_handler = MessageHandler(Filters.regex(re.compile('^(última quincena|ultima quincena)$', re.IGNORECASE)), last_payment)
+dispatcher.add_handler(last_payment_handler)
 
-    payment_handler = MessageHandler(Filters.regex(re.compile('^(Quincena #)$', re.IGNORECASE)), payment)
-    dispatcher.add_handler(payment_handler)
+payment_handler = MessageHandler(Filters.regex(re.compile('^(Quincena #)$', re.IGNORECASE)), payment)
+dispatcher.add_handler(payment_handler)
 
-    # Start the Bot
-    updater.start_polling()
+# Start depending environment mode
+run(updater)
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
-
-
-if __name__ == '__main__':
-    main()
