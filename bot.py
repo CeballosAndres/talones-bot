@@ -19,24 +19,19 @@ import os
 
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 MODE = os.getenv('MODE')
-directory = 'pdf_files'
+directory = '/storage'
 
-# Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.DEBUG
-)
-
-logger = logging.getLogger(__name__)
 
 # Select environment
 if MODE == "DEV":
+    loglevel = 'DEBUG'
     def run(updater: Update):
         # Start the Bot
         updater.start_polling()
         updater.idle()
         logger.info("Starting in development mode") 
 elif MODE == "PROD":
+    loglevel = 'INFO'
     def run(updater: Update):
         PORT = int(os.environ.get('PORT', '8443'))
         HEROKU_APP_NAME = os.environ.get('HEROKU_APP_NAME')
@@ -47,7 +42,15 @@ else:
     logger.info("Missing mode")
     sys.exit()
 
+# Enable logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.DEBUG
+)
+
+logger = logging.getLogger(__name__)
 # For custome keyboards
+
 CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 
 reply_keyboard = [
@@ -156,7 +159,7 @@ def payment(update: Update, context: CallbackContext) -> None:
 
 """Run the bot."""
 # Create the Updater and pass it your bot's token.
-persistence = PicklePersistence(filename='conversationbot')
+persistence = PicklePersistence(filename=Path(directory, 'conversationbot'))
 updater = Updater(TOKEN, persistence=persistence)
 
 # Get the dispatcher to register handlers

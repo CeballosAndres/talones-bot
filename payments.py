@@ -8,7 +8,7 @@ class Payments:
     def __init__(self, curp, curt):
         self.url_get_links = 'https://plataformaeducativa.secolima.gob.mx/38C26D9B4BBB0003AC9B599E4285945C/Reporte/ImpresionTalon/Cargar'
         self.url_index = 'https://plataformaeducativa.secolima.gob.mx/38C26D9B4BBB0003AC9B599E4285945C/Reporte/ImpresionTalon/Index'
-        self.directory = 'pdf_files'
+        self.directory = '/storage'
 
         last_payment = self.get_all_index()
         self.last_payment = last_payment[1]['QNA_PAGO'] 
