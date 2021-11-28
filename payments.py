@@ -2,16 +2,14 @@ from pathlib import Path
 import requests
 import glob
 import os
+from numpy import reshape
 import ast
 
 class Payments:
-    def __init__(self, curp, curt):
+    def __init__(self, curp, curt, directory):
         self.url_get_links = 'https://plataformaeducativa.secolima.gob.mx/38C26D9B4BBB0003AC9B599E4285945C/Reporte/ImpresionTalon/Cargar'
         self.url_index = 'https://plataformaeducativa.secolima.gob.mx/38C26D9B4BBB0003AC9B599E4285945C/Reporte/ImpresionTalon/Index'
-        self.directory = '/storage'
-
-        last_payment = self.get_all_index()
-        self.last_payment = last_payment[1]['QNA_PAGO'] 
+        self.directory = directory
 
         if len(curp) < 18:
             raise Exception('Bad format of curp')
@@ -21,6 +19,17 @@ class Payments:
             raise Exception('There are not a curt')
         else:
             self.curt = curt
+
+
+    def get_last_payment(self):
+        all_payments = self.get_all_index()
+        return all_payments[2]['QNA_PAGO'] 
+
+
+    def get_keyboard_paytments(self, quantity, row, column):
+        all_payments = self.get_all_index()
+        keyboard = [p['QNA_PAGO'] for p in all_payments[1:quantity+1]]
+        return reshape(keyboard, (row, column)).tolist()
 
 
     def get_all_index(self):
@@ -38,12 +47,22 @@ class Payments:
 
     def get_links(self, payments):
         # link structure http://seonline.secolima.gob.mx/fone/Q21171121/Q211422237541.pdf
+        # for tag = 0: http://seonline.secolima.gob.mx/fone/ 
+        # for tag = 1: http://descargas.secolima.gob.mx/fone/
+        # for '2014423': http://seonline.secolima.gob.mx/fone//QAG"             
+
         links = []
         for payment in payments[1:]:
             row = payment.get('Reg')
-            first_id = row.split('|')[1].split(" ")[0]
+            tag, first_id = row.split('|')
+            tag = tag[-1]
+            first_id = first_id.split(' ')[0]
             second_id = row.split('(')[1].split(',')[0][1:]
-            links.append( f'http://seonline.secolima.gob.mx/fone/{first_id}/Q{second_id}.pdf')
+            if tag == '1':
+                url = 'http://descargas.secolima.gob.mx/fone/'
+            else:
+                url = 'http://seonline.secolima.gob.mx/fone/'
+            links.append( f'{url}{first_id}/Q{second_id}.pdf')
         return links
 
 
@@ -69,13 +88,5 @@ class Payments:
         return self.download_files(links, fortnight)
 
     def download_last(self):
-        return self.download(self.last_payment)
-
-if __name__ == "__main__":
-    curp = "CEVA890101HCMBDN07"
-    curt = "20110342"
-    year = "2021"
-
-    p = Payments(curp, curt)
-    files = p.download_last()
-    print(files)
+        return self.download(self.get_last_payment())
+   print(files)

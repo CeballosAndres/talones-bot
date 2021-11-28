@@ -1,4 +1,5 @@
 from payments import Payments
+from dotenv import load_dotenv
 from pathlib import Path
 from typing import Dict
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
@@ -16,10 +17,11 @@ import sys
 import re
 import os
 
+load_dotenv()
 
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 MODE = os.getenv('MODE')
-directory = '/storage'
+directory = '../storage'
 
 
 # Select environment
@@ -54,7 +56,7 @@ logger = logging.getLogger(__name__)
 CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 
 reply_keyboard = [
-    ['Última quincena', 'Quincena #'],
+    ['Talon', 'Último talon'],
     ['Configurar'],
 ]
 
@@ -76,14 +78,13 @@ def start(update: Update, context: CallbackContext) -> int:
     reply_text = "Hola, puedo ayudarte a descargar tus talones de pago si trabajas para la Secretaría de Educación en Colima."
     if context.user_data:
         reply_text += " Si deseas cambiar CURP o CURT podemos hacerlo en configuración."
-        update.message.reply_text(reply_text, reply_markup=markup)
     else:
         reply_text += " \nNecesito me indiques:\n"
         if 'curp' not in context.user_data.keys():
             reply_text += "- CURP\n" 
         if 'curt' not in context.user_data.keys():
             reply_text += "- CURT\n" 
-        update.message.reply_text(reply_text, reply_markup=config_markup)
+    update.message.reply_text(reply_text, reply_markup=config_markup)
 
     return CHOOSING
 
@@ -139,22 +140,42 @@ def done(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+def send_payments(update: Update, context: CallbackContext) -> None:
+    curp = context.user_data['CURP']
+    curt = context.user_data['CURT']
+    chat_id = update.effective_user.id
+    selected_payment = update.message.text
+
+    update.message.reply_text('Preparando envío...', reply_markup=markup)
+    payment = Payments(curp, curt, directory)
+    filenames = payment.download(selected_payment)
+    # Sending all pdf files
+    for filename in filenames:
+        with open(filename, "rb") as file:
+            context.bot.send_document(chat_id=chat_id, document=file)
+
+
 def last_payment(update: Update, context: CallbackContext) -> None:
     curp = context.user_data['CURP']
     curt = context.user_data['CURT']
     chat_id = update.effective_user.id
 
     update.message.reply_text('Preparando envío...', reply_markup=markup)
-    payment = Payments(curp, curt)
-    # Downoload the last payment
+    payment = Payments(curp, curt, directory)
+    # Download the last payment
     filenames = payment.download_last()
     # Sending all pdf files
     for filename in filenames:
         with open(filename, "rb") as file:
             context.bot.send_document(chat_id=chat_id, document=file)
 
-def payment(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Próximamente...', reply_markup=markup)
+def send_keyboard_payments(update: Update, context: CallbackContext) -> None:
+    curp = context.user_data['CURP']
+    curt = context.user_data['CURT']
+    payment = Payments(curp, curt, directory)
+    test_keyboard = payment.get_keyboard_paytments(25, 5, 5)
+    test_markup = ReplyKeyboardMarkup(test_keyboard, one_time_keyboard=True)
+    update.message.reply_text('Selecciona el talon o ingresa valor en fomato AAAAQQ (cuatro dígitos para año y dos para quincena)\nejemplo 202101', reply_markup=test_markup)
 
 
 """Run the bot."""
@@ -167,7 +188,9 @@ dispatcher = updater.dispatcher
 
 # Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
 conv_handler = ConversationHandler(
-    entry_points=[CommandHandler('start', start)],
+    entry_points=[CommandHandler('start', start),
+        MessageHandler(Filters.regex(re.compile('^(configurar|config)$',
+            re.IGNORECASE)), start)],
     states={
         CHOOSING: [
             MessageHandler(
@@ -196,11 +219,18 @@ dispatcher.add_handler(conv_handler)
 show_data_handler = CommandHandler('show_data', show_data)
 dispatcher.add_handler(show_data_handler)
 
-last_payment_handler = MessageHandler(Filters.regex(re.compile('^(última quincena|ultima quincena)$', re.IGNORECASE)), last_payment)
+# Downoload last payment
+last_payment_handler = MessageHandler(Filters.regex(re.compile('^(último talon|ultimo talon)$', re.IGNORECASE)), last_payment)
 dispatcher.add_handler(last_payment_handler)
 
-payment_handler = MessageHandler(Filters.regex(re.compile('^(Quincena #)$', re.IGNORECASE)), payment)
+# Send keyboard and instructions for download spesific payment
+keyboard_payments_handler = MessageHandler(Filters.regex(re.compile('^(talon)$', re.IGNORECASE)), send_keyboard_payments)
+dispatcher.add_handler(keyboard_payments_handler)
+
+# Download spesific paymente by id: '202101' (year-payment)
+payment_handler = MessageHandler(Filters.regex(r'\d{6}'), send_payments)
 dispatcher.add_handler(payment_handler)
+
 
 # Start depending environment mode
 run(updater)
