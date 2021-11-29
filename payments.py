@@ -89,4 +89,3 @@ class Payments:
 
     def download_last(self):
         return self.download(self.get_last_payment())
-   print(files)

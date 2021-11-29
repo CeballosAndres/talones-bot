@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 
 reply_keyboard = [
-    ['Talon', 'Último talon'],
+    ['Talón', 'Último talón'],
     ['Configurar'],
 ]
 
@@ -175,7 +175,7 @@ def send_keyboard_payments(update: Update, context: CallbackContext) -> None:
     payment = Payments(curp, curt, directory)
     test_keyboard = payment.get_keyboard_paytments(25, 5, 5)
     test_markup = ReplyKeyboardMarkup(test_keyboard, one_time_keyboard=True)
-    update.message.reply_text('Selecciona el talon o ingresa valor en fomato AAAAQQ (cuatro dígitos para año y dos para quincena)\nejemplo 202101', reply_markup=test_markup)
+    update.message.reply_text('Selecciona el talón o ingresa valor en fomato AAAAQQ (cuatro dígitos para año y dos para quincena)\nejemplo 202101', reply_markup=test_markup)
 
 
 """Run the bot."""
@@ -220,11 +220,11 @@ show_data_handler = CommandHandler('show_data', show_data)
 dispatcher.add_handler(show_data_handler)
 
 # Downoload last payment
-last_payment_handler = MessageHandler(Filters.regex(re.compile('^(último talon|ultimo talon)$', re.IGNORECASE)), last_payment)
+last_payment_handler = MessageHandler(Filters.regex(re.compile('^(último talón|ultimo talon)$', re.IGNORECASE)), last_payment)
 dispatcher.add_handler(last_payment_handler)
 
 # Send keyboard and instructions for download spesific payment
-keyboard_payments_handler = MessageHandler(Filters.regex(re.compile('^(talon)$', re.IGNORECASE)), send_keyboard_payments)
+keyboard_payments_handler = MessageHandler(Filters.regex(re.compile('^(talon|talón)$', re.IGNORECASE)), send_keyboard_payments)
 dispatcher.add_handler(keyboard_payments_handler)
 
 # Download spesific paymente by id: '202101' (year-payment)
