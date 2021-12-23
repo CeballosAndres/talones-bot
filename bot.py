@@ -219,12 +219,18 @@ dispatcher.add_handler(conv_handler)
 show_data_handler = CommandHandler('show_data', show_data)
 dispatcher.add_handler(show_data_handler)
 
+last_payment_command_handler = CommandHandler('ultimo', last_payment)
+dispatcher.add_handler(last_payment_command_handler)
+
+keyboard_payment_command_handler = CommandHandler('talones', send_keyboard_payments)
+dispatcher.add_handler(keyboard_payment_command_handler)
+
 # Downoload last payment
-last_payment_handler = MessageHandler(Filters.regex(re.compile('^(último talón|ultimo talon)$', re.IGNORECASE)), last_payment)
+last_payment_handler = MessageHandler(Filters.regex(re.compile('^(último talón|ultimo talon|ultimo|último)$', re.IGNORECASE)), last_payment)
 dispatcher.add_handler(last_payment_handler)
 
 # Send keyboard and instructions for download spesific payment
-keyboard_payments_handler = MessageHandler(Filters.regex(re.compile('^(talon|talón)$', re.IGNORECASE)), send_keyboard_payments)
+keyboard_payments_handler = MessageHandler(Filters.regex(re.compile('^(talon|talón|talones|pago|pagos)$', re.IGNORECASE)), send_keyboard_payments)
 dispatcher.add_handler(keyboard_payments_handler)
 
 # Download spesific paymente by id: '202101' (year-payment)
