@@ -23,7 +23,7 @@ class Payments:
 
     def get_last_payment(self):
         all_payments = self.get_all_index()
-        return all_payments[2]['QNA_PAGO'] 
+        return all_payments[1]['QNA_PAGO'] 
 
 
     def get_keyboard_paytments(self, quantity, row, column):
